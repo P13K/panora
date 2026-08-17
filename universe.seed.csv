@@ -1,0 +1,115 @@
+ticker,name,market,sector
+AI.PA,Air Liquide,Paris,Materials
+MC.PA,LVMH,Paris,Consumer Discretionary
+OR.PA,L'Oreal,Paris,Consumer Staples
+RMS.PA,Hermes,Paris,Consumer Discretionary
+SAN.PA,Sanofi,Paris,Healthcare
+TTE.PA,TotalEnergies,Paris,Energy
+SU.PA,Schneider Electric,Paris,Industrials
+CAP.PA,Capgemini,Paris,Technology
+DSY.PA,Dassault Systemes,Paris,Technology
+STMPA.PA,STMicroelectronics,Paris,Technology
+BN.PA,Danone,Paris,Consumer Staples
+RI.PA,Pernod Ricard,Paris,Consumer Staples
+EL.PA,EssilorLuxottica,Paris,Healthcare
+KER.PA,Kering,Paris,Consumer Discretionary
+SAF.PA,Safran,Paris,Industrials
+HO.PA,Thales,Paris,Industrials
+AIR.PA,Airbus,Paris,Industrials
+LR.PA,Legrand,Paris,Industrials
+VIE.PA,Veolia,Paris,Utilities
+ENGI.PA,Engie,Paris,Utilities
+DG.PA,Vinci,Paris,Industrials
+SGO.PA,Saint-Gobain,Paris,Materials
+ML.PA,Michelin,Paris,Consumer Discretionary
+RNO.PA,Renault,Paris,Consumer Discretionary
+STLAP.PA,Stellantis,Paris,Consumer Discretionary
+ACA.PA,Credit Agricole,Paris,Financial Services
+GLE.PA,Societe Generale,Paris,Financial Services
+BNP.PA,BNP Paribas,Paris,Financial Services
+CS.PA,AXA,Paris,Financial Services
+CA.PA,Carrefour,Paris,Consumer Staples
+PUB.PA,Publicis,Paris,Communication Services
+EN.PA,Bouygues,Paris,Industrials
+ORA.PA,Orange,Paris,Communication Services
+BVI.PA,Bureau Veritas,Paris,Industrials
+EDEN.PA,Edenred,Paris,Technology
+ERF.PA,Eurofins Scientific,Paris,Healthcare
+ALO.PA,Alstom,Paris,Industrials
+GTT.PA,GTT,Paris,Energy
+ATE.PA,Alten,Paris,Technology
+SOP.PA,Sopra Steria,Paris,Technology
+SOI.PA,Soitec,Paris,Technology
+RUI.PA,Rubis,Paris,Energy
+NEX.PA,Nexans,Paris,Industrials
+FDJ.PA,FDJ United,Paris,Consumer Discretionary
+IPN.PA,Ipsen,Paris,Healthcare
+VIRP.PA,Virbac,Paris,Healthcare
+AKE.PA,Arkema,Paris,Materials
+FGR.PA,Eiffage,Paris,Industrials
+GET.PA,Getlink,Paris,Industrials
+SCR.PA,SCOR,Paris,Financial Services
+ELIS.PA,Elis,Paris,Industrials
+SK.PA,SEB,Paris,Consumer Discretionary
+TRI.PA,Trigano,Paris,Consumer Discretionary
+MERY.PA,Mersen,Paris,Industrials
+SPIE.PA,SPIE,Paris,Industrials
+VRLA.PA,Verallia,Paris,Materials
+UBI.PA,Ubisoft,Paris,Communication Services
+WLN.PA,Worldline,Paris,Technology
+COFA.PA,Coface,Paris,Financial Services
+LI.PA,Klepierre,Paris,Real Estate
+ASML.AS,ASML,Amsterdam,Technology
+ASM.AS,ASM International,Amsterdam,Technology
+BESI.AS,BE Semiconductor,Amsterdam,Technology
+ADYEN.AS,Adyen,Amsterdam,Technology
+PRX.AS,Prosus,Amsterdam,Communication Services
+HEIA.AS,Heineken,Amsterdam,Consumer Staples
+INGA.AS,ING Groep,Amsterdam,Financial Services
+PHIA.AS,Philips,Amsterdam,Healthcare
+DSFIR.AS,DSM-Firmenich,Amsterdam,Materials
+AKZA.AS,Akzo Nobel,Amsterdam,Materials
+WKL.AS,Wolters Kluwer,Amsterdam,Technology
+RAND.AS,Randstad,Amsterdam,Industrials
+AD.AS,Ahold Delhaize,Amsterdam,Consumer Staples
+KPN.AS,KPN,Amsterdam,Communication Services
+NN.AS,NN Group,Amsterdam,Financial Services
+ASRNL.AS,ASR Nederland,Amsterdam,Financial Services
+AGN.AS,Aegon,Amsterdam,Financial Services
+IMCD.AS,IMCD,Amsterdam,Materials
+ARCAD.AS,Arcadis,Amsterdam,Industrials
+TWEKA.AS,TKH Group,Amsterdam,Industrials
+AALB.AS,Aalberts,Amsterdam,Industrials
+BRNL.AS,Brunel International,Amsterdam,Industrials
+HEIJM.AS,Heijmans,Amsterdam,Industrials
+VPK.AS,Vopak,Amsterdam,Energy
+SBMO.AS,SBM Offshore,Amsterdam,Energy
+CTPNV.AS,CTP,Amsterdam,Real Estate
+ABI.BR,AB InBev,Brussels,Consumer Staples
+KBC.BR,KBC Groupe,Brussels,Financial Services
+UCB.BR,UCB,Brussels,Healthcare
+SOLB.BR,Solvay,Brussels,Materials
+GBLB.BR,GBL,Brussels,Financial Services
+AGS.BR,Ageas,Brussels,Financial Services
+ELI.BR,Elia Group,Brussels,Utilities
+WDP.BR,WDP,Brussels,Real Estate
+COFB.BR,Cofinimmo,Brussels,Real Estate
+MELE.BR,Melexis,Brussels,Technology
+BAR.BR,Barco,Brussels,Technology
+SOF.BR,Sofina,Brussels,Financial Services
+DIE.BR,D'Ieteren Group,Brussels,Consumer Discretionary
+LOTB.BR,Lotus Bakeries,Brussels,Consumer Staples
+AZE.BR,Azelis,Brussels,Materials
+UMI.BR,Umicore,Brussels,Materials
+TESB.BR,Tessenderlo,Brussels,Materials
+ARGX.BR,argenx,Brussels,Healthcare
+EDP.LS,EDP,Lisbon,Utilities
+EDPR.LS,EDP Renovaveis,Lisbon,Utilities
+GALP.LS,Galp Energia,Lisbon,Energy
+JMT.LS,Jeronimo Martins,Lisbon,Consumer Staples
+NOS.LS,NOS SGPS,Lisbon,Communication Services
+SON.LS,Sonae,Lisbon,Consumer Staples
+ALTR.LS,Altri,Lisbon,Materials
+CTT.LS,CTT Correios,Lisbon,Industrials
+NVG.LS,The Navigator Company,Lisbon,Materials
+SEM.LS,Semapa,Lisbon,Materials

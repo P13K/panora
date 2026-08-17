@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panora — PEA screener for Euronext</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EAECF0; --card:#FFFFFF; --ink:#12181F; --muted:#6C7683;
+  --line:#D3D8DF; --line-soft:#E6E9ED;
+  --up:#0B6E4F; --down:#A63A2A; --warn:#B7791F;
+  /* one colour per score block, reused everywhere that block appears */
+  --trend:#2E3AA8;   --trend-soft:#E6E8F7;
+  --quality:#0E7C7B; --quality-soft:#E0F1F0;
+  --growth:#B26A00;  --growth-soft:#FBEEDC;
+  --value:#6D3FA0;   --value-soft:#EFE7F7;
+  --r:4px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Inter Tight",system-ui,sans-serif; font-size:14px; line-height:1.45;
+}
+.num{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;}
+.wrap{max-width:1340px; margin:0 auto; padding:22px 18px 80px;}
+
+/* ---------- header + funnel (signature element) ---------- */
+header{margin-bottom:22px}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted);
+}
+h1{
+  font-family:"Bricolage Grotesque",sans-serif; font-weight:700;
+  font-size:clamp(28px,5vw,46px); line-height:1; letter-spacing:-.02em; margin:6px 0 4px;
+  display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
+}
+h1 .tag{
+  font-family:"IBM Plex Mono",monospace; font-weight:500; font-size:12px;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--trend);
+  border:1px solid var(--trend); border-radius:20px; padding:3px 10px;
+}
+.sub{color:var(--muted); max-width:62ch; margin:0 0 20px}
+.funnel{display:flex; gap:2px; border:1px solid var(--line); background:var(--card); border-radius:var(--r); overflow:hidden}
+.stage{padding:11px 14px; border-right:1px solid var(--line-soft); flex:0 0 auto; min-width:0; cursor:help}
+.stage:last-child{border-right:0}
+.stage b{font-family:"IBM Plex Mono",monospace; font-size:20px; font-weight:600; display:block; line-height:1.1}
+.stage span{font-size:11px; color:var(--muted); letter-spacing:.02em; display:block; margin-top:2px}
+/* funnel narrows in colour as well as width: pale at the wide end, saturated at the nugget end */
+.stage.s0{background:#F4F5F8} .stage.s1{background:#EDEFF7}
+.stage.s2{background:var(--trend-soft)} .stage.s3{background:var(--quality-soft)}
+.stage.s4{background:#FDF3D8; box-shadow:inset 3px 0 0 var(--growth)}
+.stage.s4 b{color:#8A5200}
+.stamp{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--muted); margin-top:8px}
+
+/* ---------- filters ---------- */
+.controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:22px 0 12px}
+select,button,input[type=search]{
+  font:inherit; color:var(--ink); background:var(--card); border:1px solid var(--line);
+  border-radius:var(--r); padding:7px 10px; cursor:pointer;
+}
+input[type=search]{cursor:text; min-width:150px}
+button:hover,select:hover{border-color:var(--trend)}
+button.on{background:var(--trend); border-color:var(--trend); color:#fff}
+.spacer{flex:1}
+.count{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--muted)}
+
+/* ---------- table ---------- */
+.tablewrap{background:var(--card); border:1px solid var(--line); border-radius:var(--r); overflow-x:auto}
+table{border-collapse:collapse; width:100%; min-width:960px}
+th,td{padding:9px 10px; text-align:right; border-bottom:1px solid var(--line-soft); white-space:nowrap}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2),th:nth-child(3),td:nth-child(3){text-align:left}
+thead th{
+  position:sticky; top:0; background:var(--card); z-index:2; cursor:pointer;
+  font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--muted); font-weight:500; border-bottom:2px solid var(--line);
+}
+thead th:hover{color:var(--trend)}
+thead th[aria-sort]:after{content:" ▾"; color:var(--trend)}
+thead th[aria-sort=asc]:after{content:" ▴"}
+/* column headers tinted by which score block they feed */
+thead th.c-trend{color:var(--trend)} thead th.c-quality{color:var(--quality)}
+thead th.c-growth{color:var(--growth)} thead th.c-value{color:var(--value)}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:#F5F6F9}
+tbody tr.out{opacity:.4}
+.tk{font-family:"IBM Plex Mono",monospace; font-weight:600}
+.nm{color:var(--muted); font-size:12px; display:block}
+.up{color:var(--up)} .down{color:var(--down)}
+.mk{font-size:11px; color:var(--muted)}
+.score{font-family:"IBM Plex Mono",monospace; font-weight:600; padding:2px 7px; border-radius:10px}
+.score.hi{background:#E3F3EC; color:var(--up)}
+.score.mid{background:#FBEEDC; color:#8A5200}
+.score.lo{background:#F1F2F5; color:var(--muted)}
+.pill{
+  font-family:"IBM Plex Mono",monospace; font-size:10px; padding:3px 7px;
+  border-radius:3px; border:1px solid var(--line); color:var(--muted); cursor:help;
+}
+.pill.ok{color:var(--up); border-color:#A9D2C2; background:#EAF6F1}
+.pill.no{color:var(--down); border-color:#E6BDB3; background:#FBEFEC}
+
+/* weighted score bar: segment widths ARE the 40/25/20/15 weights */
+.bar{display:flex; width:120px; height:18px; gap:1px; margin-left:auto; cursor:help}
+.seg{position:relative; background:var(--line-soft); border-radius:1px}
+.seg i{position:absolute; inset:auto 0 0 0; display:block; border-radius:1px}
+.seg.t{flex:40} .seg.t i{background:var(--trend)}
+.seg.q{flex:25} .seg.q i{background:var(--quality)}
+.seg.g{flex:20} .seg.g i{background:var(--growth)}
+.seg.v{flex:15} .seg.v i{background:var(--value)}
+
+/* ---------- tooltip ---------- */
+.ttip{border-bottom:1px dotted currentColor; cursor:help}
+#tip{
+  position:fixed; z-index:60; max-width:290px; background:var(--ink); color:#F3F5F8;
+  padding:9px 11px; border-radius:5px; font-size:12.5px; line-height:1.4;
+  box-shadow:0 6px 24px rgba(18,24,31,.24); pointer-events:none; opacity:0;
+  transition:opacity .12s; font-family:"Inter Tight",sans-serif;
+}
+#tip.show{opacity:1}
+#tip b{color:#FFF; display:block; margin-bottom:3px; font-size:12px}
+#tip em{display:block; margin-top:5px; color:#9FC7B5; font-style:normal;
+  font-family:"IBM Plex Mono",monospace; font-size:11px}
+
+/* ---------- detail drawer ---------- */
+.drawer{
+  position:fixed; inset:0 0 0 auto; width:min(470px,100%); background:var(--card);
+  border-left:1px solid var(--line); padding:22px; overflow-y:auto;
+  transform:translateX(100%); transition:transform .22s ease; z-index:10;
+  box-shadow:-14px 0 40px rgba(18,24,31,.1);
+}
+.drawer.open{transform:none}
+.drawer h2{font-family:"Bricolage Grotesque",sans-serif; font-size:24px; margin:0 0 2px; letter-spacing:-.01em}
+.close{position:absolute; top:16px; right:16px}
+.kv{display:grid; grid-template-columns:1fr auto; gap:5px 12px; margin:14px 0; font-size:13px}
+.kv dt{color:var(--muted)} .kv dd{margin:0; font-family:"IBM Plex Mono",monospace; text-align:right}
+.grp{
+  font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+  padding:6px 10px; margin-top:18px; border-radius:3px; display:flex; justify-content:space-between;
+}
+.grp.t{background:var(--trend-soft); color:var(--trend)}
+.grp.q{background:var(--quality-soft); color:var(--quality)}
+.grp.g{background:var(--growth-soft); color:var(--growth)}
+.grp.v{background:var(--value-soft); color:var(--value)}
+.reason{background:#FBEFEC; border:1px solid #E6BDB3; color:var(--down); padding:8px 10px; border-radius:var(--r); font-size:12px; margin-top:12px}
+.pills{margin-top:14px; display:flex; gap:6px; flex-wrap:wrap}
+.pillhead{font-size:11px; color:var(--muted); margin-top:16px}
+details#settings{margin-top:10px}
+details#settings summary{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--trend);cursor:pointer}
+#settingsBody{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:2px 18px;margin-top:10px;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;font-size:12px}
+#settingsBody div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line-soft);padding:3px 0}
+#settingsBody b{font-family:"IBM Plex Mono",monospace;font-weight:500}
+.empty{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:28px; text-align:center; color:var(--muted)}
+.empty code{font-family:"IBM Plex Mono",monospace; background:var(--paper); padding:2px 5px}
+@media (prefers-reduced-motion:reduce){.drawer,#tip{transition:none}}
+@media (max-width:640px){.stage{flex:1 1 45%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Euronext Paris · Amsterdam · Brussels · Lisbon — PEA-eligible</div>
+    <h1>Panora<span class="tag">PEA screener</span></h1>
+    <p class="sub">Pan the whole river, keep what glints. Long-term trend first (200-day moving average as a hard filter), fundamentals next. Hover any metric for a plain-English definition.</p>
+    <div class="funnel" id="funnel"></div>
+    <div class="stamp" id="stamp">Loading…</div>
+    <details id="settings"><summary>Settings applied to this run</summary><div id="settingsBody"></div></details>
+  </header>
+
+  <div class="controls">
+    <select id="market"><option value="">🌍 All markets</option></select>
+    <select id="sector"><option value="">🏭 All sectors</option></select>
+    <input type="search" id="q" placeholder="🔍 Search">
+    <button id="fOut" class="on">Hide excluded</button>
+    <button id="fHalf">💎 Half-Price 5Y</button>
+    <button id="fTop">⭐ Score ≥ 3.8</button>
+    <span class="spacer"></span>
+    <span class="count" id="count"></span>
+    <button id="brief">📋 Copy research brief</button>
+    <button id="csv">⬇ Export CSV</button>
+  </div>
+
+  <div class="tablewrap"><table id="tbl">
+    <thead><tr id="head"></tr></thead>
+    <tbody id="body"></tbody>
+  </table></div>
+  <div id="empty"></div>
+</div>
+
+<aside class="drawer" id="drawer" aria-hidden="true"></aside>
+<div id="tip" role="tooltip"></div>
+
+<script>window.DEMO_DATA={
+ "generated_at": "2026-08-17T15:31:31+00:00",
+ "config": {
+  "_readme": "All screener settings live here. Edit this file, not the code. Then rerun build_universe.py followed by screener.py.",
+  "universe": {
+   "markets": [
+    "XPAR",
+    "XAMS",
+    "XBRU",
+    "XLIS"
+   ],
+   "eligible_countries": [
+    "FR",
+    "NL",
+    "BE",
+    "PT",
+    "DE",
+    "ES",
+    "IT",
+    "IE",
+    "LU",
+    "AT",
+    "FI",
+    "SE",
+    "DK",
+    "PL",
+    "GR",
+    "CZ",
+    "HU",
+    "RO",
+    "BG",
+    "HR",
+    "SI",
+    "SK",
+    "EE",
+    "LV",
+    "LT",
+    "CY",
+    "MT",
+    "NO",
+    "IS",
+    "LI"
+   ],
+   "min_market_cap_eur": 50000000,
+   "min_daily_turnover_eur": 100000,
+   "exclude_tickers": [
+    "NOKIA.PA",
+    "MT.AS"
+   ],
+   "_comment_exclusions": "Duplicate listings or names you never want resurfacing."
+  },
+  "elimination_filters": {
+   "enabled": true,
+   "max_days_below_ma200": 126,
+   "net_income_must_be_positive": true,
+   "fcf_must_be_positive": true,
+   "max_net_debt_to_ebitda": 5.0,
+   "min_current_ratio": 0.8,
+   "min_revenue_growth_3y": -0.03,
+   "sectors_exempt_from_debt_filter": [
+    "Real Estate",
+    "Utilities",
+    "Financial Services"
+   ],
+   "_comment": "A stock that trips even one of these filters is flagged 'excluded'. Set 'enabled' to false to see the full universe unfiltered."
+  },
+  "score_weights": {
+   "trend": 0.4,
+   "quality": 0.25,
+   "growth": 0.2,
+   "value": 0.15
+  },
+  "trend_grid": {
+   "great_52w_perf": 0.25,
+   "good_52w_perf": 0.1,
+   "great_relative_strength": 0.15,
+   "min_ma200_slope": 0.0
+  },
+  "quality_grid": {
+   "excellent_roe": 0.25,
+   "good_roe": 0.15,
+   "fair_roe": 0.1,
+   "weak_roe": 0.05,
+   "excellent_debt_to_ebitda": 1.0,
+   "acceptable_debt_to_ebitda": 3.0,
+   "excellent_fcf_yield": 0.05
+  },
+  "growth_grid": {
+   "great_revenue_growth": 0.2,
+   "good_revenue_growth": 0.1,
+   "fair_revenue_growth": 0.05
+  },
+  "value_grid": {
+   "excellent_pe": 12,
+   "good_pe": 18,
+   "fair_pe": 25,
+   "high_pe": 35,
+   "excellent_fcf_yield": 0.07,
+   "good_fcf_yield": 0.04,
+   "excellent_ev_ebitda": 8
+  },
+  "half_price_5y_valuation": {
+   "target_cagr": 0.15,
+   "eps_growth_cap": 0.2,
+   "eps_growth_default": 0.08,
+   "exit_pe_cap": 20,
+   "_comment": "EPS projected 5 years out with capped growth, exit PE capped, then implied CAGR back to today's price."
+  },
+  "display_thresholds": {
+   "shortlist_score": 3.8,
+   "min_insider_ownership": 0.03,
+   "min_roe": 0.15,
+   "target_roce": 0.15,
+   "max_peg": 1.0,
+   "max_ev_ebitda": 10,
+   "min_eps_growth": 0.05,
+   "max_debt_to_ebitda": 2.0,
+   "max_debt_to_net_income": 4.0,
+   "_comment": "Quality thresholds used only for the green/red pills in the detail panel. They do not exclude anything."
+  },
+  "execution": {
+   "benchmark": "^STOXX",
+   "benchmark_fallback": "^FCHI",
+   "pause_between_calls_sec": 0.5,
+   "fundamentals_only_if_trend_passes": true,
+   "_comment_perf": "fundamentals_only_if_trend_passes = true: fundamentals are only downloaded for stocks that already passed the trend filter. Roughly cuts run time by 3x on a large universe."
+  }
+ },
+ "funnel": {
+  "universe": 1147,
+  "data_ok": 1032,
+  "trend_ok": 389,
+  "after_filters": 214,
+  "shortlist": 31
+ },
+ "errors": [],
+ "rows": [
+  {
+   "ticker": "DSY.PA",
+   "name": "Dassault Systemes",
+   "market": "Paris",
+   "sector": "Technology",
+   "country": "France",
+   "isin": null,
+   "excluded": false,
+   "reasons": [],
+   "price": 363.61,
+   "ma50": 352.7,
+   "ma200": 319.98,
+   "ma200_slope_6m": 0.0749,
+   "days_below_ma200": 0,
+   "perf_52w": 0.4239,
+   "dist_high_52w": -0.1325,
+   "rsi_weekly": 56.0,
+   "rel_strength_52w": 0.3439,
+   "turnover_median": 25179028,
+   "above_ma50": true,
+   "above_ma200": true,
+   "market_cap": 299297328899,
+   "pe": 39.9,
+   "peg": 2.18,
+   "roe": 0.3007,
+   "roce": 0.1446,
+   "net_margin": 0.092,
+   "ev_ebitda": 10.8,
+   "net_debt_ebitda": -0.25,
+   "net_debt_net_income": 2.83,
+   "fcf_yield": 0.042,
+   "current_ratio": 2.25,
+   "rev_growth_3y": 0.066,
+   "eps_growth_3y": 0.2853,
+   "insider_pct": 0.3389,
+   "dividend_yield": 0.0,
+   "fair_value_5y": 543.09,
+   "cagr_implied_5y": 0.2294,
+   "half_price_pass": false,
+   "net_income_positive": true,
+   "fcf_positive": true,
+   "fundamentals_available": true,
+   "scores": {
+    "trend": 5,
+    "quality": 5,
+    "growth": 3,
+    "value": 3,
+    "global": 4.3
+   }
+  },
+  {
+   "ticker": "MELE.BR",
+   "name": "Melexis",
+   "market": "Brussels",
+   "sector": "Technology",
+   "country": "Belgium",
+   "isin": null,
+   "excluded": false,
+   "reasons": [],
+   "price": 140.23,
+   "ma50": 136.02,
+   "ma200": 123.4,
+   "ma200_slope_6m": -0.0104,
+   "days_below_ma200": 0,
+   "perf_52w": 0.4767,
+   "dist_high_52w": -0.1258,
+   "rsi_weekly": 59.4,
+   "rel_strength_52w": 0.3967,
+   "turnover_median": 61890266,
+   "above_ma50": true,
+   "above_ma200": true,
+   "market_cap": 116585339450,
+   "pe": 24.0,
+   "peg": 0.66,
+   "roe": 0.0761,
+   "roce": 0.0827,
+   "net_margin": 0.1683,
+   "ev_ebitda": 10.1,
+   "net_debt_ebitda": 2.09,
+   "net_debt_net_income": 0.96,
+   "fcf_yield": 0.0437,
+   "current_ratio": 2.35,
+   "rev_growth_3y": 0.0973,
+   "eps_growth_3y": 0.132,
+   "insider_pct": 0.3717,
+   "dividend_yield": 0.0489,
+   "fair_value_5y": 193.09,
+   "cagr_implied_5y": 0.1302,
+   "half_price_pass": true,
+   "net_income_positive": true,
+   "fcf_positive": true,
+   "fundamentals_available": true,
+   "scores": {
+    "trend": 5,
+    "quality": 5,
+    "growth": 3,
+    "value": 2,
+    "global": 4.15
+   }
+  },
+  {
+   "ticker": "ASML.AS",
+   "name": "ASML Holding",
+   "market": "Amsterdam",
+   "sector": "Technology",
+   "country": "Netherlands",
+   "isin": null,
+   "excluded": false,
+   "reasons": [],
+   "price": 372.86,
+   "ma50": 361.67,
+   "ma200": 328.12,
+   "ma200_slope_6m": -0.0038,
+   "days_below_ma200": 0,
+   "perf_52w": 0.1978,
+   "dist_high_52w": -0.1024,
+   "rsi_weekly": 62.0,
+   "rel_strength_52w": 0.1178,
+   "turnover_median": 71409323,
+   "above_ma50": true,
+   "above_ma200": true,
+   "market_cap": 28418212178,
+   "pe": 18.4,
+   "peg": 0.68,
+   "roe": 0.3353,
+   "roce": 0.258,
+   "net_margin": 0.0413,
+   "ev_ebitda": 24.6,
+   "net_debt_ebitda": 2.88,
+   "net_debt_net_income": 2.27,
+   "fcf_yield": 0.0592,
+   "current_ratio": 1.15,
+   "rev_growth_3y": -0.0455,
+   "eps_growth_3y": 0.1349,
+   "insider_pct": 0.0238,
+   "dividend_yield": 0.0095,
+   "fair_value_5y": 573.73,
+   "cagr_implied_5y": 0.0269,
+   "half_price_pass": false,
+   "net_income_positive": true,
+   "fcf_positive": true,
+   "fundamentals_available": true,
+   "scores": {
+    "trend": 4,
+    "quality": 4,
+    "growth": 5,
+    "value": 2,
+    "global": 3.9
+   }
+  },
+  {
+   "ticker": "BESI.AS",
+   "name": "BE Semiconductor",
+   "market": "Amsterdam",
+   "sector": "Technology",
+   "country": "Netherlands",
+   "isin": null,
+   "excluded": false,
+   "reasons": [],
+   "price": 220.62,
+   "ma50": 214.0,
+   "ma200": 194.15,
+   "ma200_slope_6m": 0.0601,
+   "days_below_ma200": 0,
+   "perf_52w": 0.083,
+   "dist_high_52w": -0.1677,
+   "rsi_weekly": 42.9,
+   "rel_strength_52w": 0.003,
+   "turnover_median": 67568874,
+   "above_ma50": true,
+   "above_ma200": true,
+   "market_cap": 9130991057,
+   "pe": 27.6,
+   "peg": 1.46,
+   "roe": 0.1383,
+   "roce": 0.2595,
+   "net_margin": 0.1643,
+   "ev_ebitda": 17.3,
+   "net_debt_ebitda": 2.72,
+   "net_debt_net_income": 0.28,
+   "fcf_yield": 0.0109,
+   "current_ratio": 1.38,
+   "rev_growth_3y": 0.1534,
+   "eps_growth_3y": 0.0209,
+   "insider_pct": 0.0678,
+   "dividend_yield": 0.0453,
+   "fair_value_5y": 468.59,
+   "cagr_implied_5y": 0.1216,
+   "half_price_pass": true,
+   "net_income_positive": true,
+   "fcf_positive": true,
+   "fundamentals_available": true,
+   "scores": {
+    "trend": 3,
+    "quality": 4,
+    "growth": 5,
+    "value": 4,
+    "global": 3.8
+   }
+  },
+  {
+   "ticker": "WKL.AS",
+   "name": "Wolters Kluwer",
+   "market": "Amsterdam",
+   "sector": "Technology",
+   "country": "Netherlands",
+   "isin": null,
+   "excluded": true,
+   "reasons": [
+    "Below MA200 for 214 sessions"
+   ],
+   "price": 388.32,
+   "ma50": 376.67,
+   "ma200": 341.72,
+   "ma200_slope_6m": 0.1446,
+   "days_below_ma200": 214,
+   "perf_52w": 0.3213,
+   "dist_high_52w": -0.1079,
+   "rsi_weekly": 73.1,
+   "rel_strength_52w": 0.2413,
+   "turnover_median": 45137359,
+   "above_ma50": false,
+   "above_ma200": false,
+   "market_cap": 299043270131,
+   "pe": 13.9,
+   "peg": 2.2,
+   "roe": 0.2979,
+   "roce": 0.1172,
+   "net_margin": 0.1408,
+   "ev_ebitda": 22.9,
+   "net_debt_ebitda": 0.86,
+   "net_debt_net_income": 1.25,
+   "fcf_yield": 0.0258,
+   "current_ratio": 2.32,
+   "rev_growth_3y": -0.048,
+   "eps_growth_3y": 0.1425,
+   "insider_pct": 0.2611,
+   "dividend_yield": 0.0251,
+   "fair_value_5y": 911.48,
+   "cagr_implied_5y": 0.0989,
+   "half_price_pass": false,
+   "net_income_positive": true,
+   "fcf_positive": true,
+   "fundamentals_available": true,
+   "scores": {
+    "trend": 5,
+    "quality": 3,
+    "growth": 3,
+    "value": 3,
+    "global": 3.8
+   }
+  },
+  {
+   "ticker": "SAF.PA",
+   "name": "Safran",
+   "market": "Paris",
+   "sector": "Industrials",
+   "country": "France",
+   "isin": null,
+   "excluded": false,
+   "reasons": [],
+   "price": 482.34,
+   "ma50": 467.87,
+   "ma200": 424.46,
+   "ma200_slope_6m": 0.0486,
+   "days_below_ma200": 0,
+   "perf_52w": 0.5483,
+   "dist_high_52w": -0.1709,
+   "rsi_weekly": 62.5,
+   "rel_strength_52w": 0.4683,
+   "turnover_median": 9209881,
+   "above_ma50": true,
+   "above_ma200": true,
+   "market_cap": 296792648914,
+   "pe": 15.6,
+   "peg": 1.02,
+   "roe": 0.3227,
+   "roce": 0.1487,
+   "net_margin": 0.11,
+   "ev_ebitda": 6.5,
+   "net_debt_ebitda": -0.18,
+   "net_debt_net_income": 1.91,
+   "fcf_yield": 0.0294,
+   "current_ratio": 1.86,
+   "rev_growth_3y": 0.0615,
+   "eps_growth_3y": 0.1086,
+   "insider_pct": 0.3837,
+   "dividend_yield": 0.0242,
+   "fair_value_5y": 966.8,
+   "cagr_implied_5y": 0.2193,
+   "half_price_pass": false,
+   "net_income_positive": true,
+   "fcf_positive": true,
+   "fundamentals_available": true,
+   "scores": {
+    "trend": 5,
+    "quality": 3,
+    "growth": 3,
+    "value": 2,
+    "global": 3.65
+   }
+  },
+  {
+   "ticker": "ATE.PA",
+   "name": "Alten",
+   "market": "Paris",
+   "sector": "Technology",
+   "country": "France",
+   "isin": null,
+   "excluded": false,
+   "reasons": [],
+   "price": 275.03,
+   "ma50": 266.78,
+   "ma200": 242.03,
+   "ma200_slope_6m": 0.1701,
+   "days_below_ma200": 0,
+   "perf_52w": 0.2827,
+   "dist_high_52w": -0.0769,
+   "rsi_weekly": 60.4,
+   "rel_strength_52w": 0.2027,
+   "turnover_median": 28620519,
+   "above_ma50": true,
+   "above_ma200": true,
+   "market_cap": 41025662650,
+   "pe": 24.4,
+   "peg": 2.17,
+   "roe": 0.3486,
+   "roce": 0.2634,
+   "net_margin": 0.2865,
+   "ev_ebitda": 10.5,
+   "net_debt_ebitda": 0.09,
+   "net_debt_net_income": 1.25,
+   "fcf_yield": 0.032,
+   "current_ratio": 1.24,
+   "rev_growth_3y": 0.0742,
+   "eps_growth_3y": 0.169,
+   "insider_pct": 0.1976,
+   "dividend_yield": 0.0158,
+   "fair_value_5y": 653.13,
+   "cagr_implied_5y": 0.2459,
+   "half_price_pass": false,
+   "net_income_positive": true,
+   "fcf_positive": true,
+   "fundamentals_available": true,
+   "scores": {
+    "trend": 4,
+    "quality": 3,
+    "growth": 5,
+    "value": 2,
+    "global": 3.65
+   }
+  },
+  {
+   "ticker": "LOTB.BR",
+   "name": "Lotus Bakeries",
+   "market": "Brussels",
+   "sector": "Consumer Staples",
+   "country": "Belgium",
+   "isin": null,
+   "excluded": false,
+   "reasons": [],
+   "price": 784.68,
+   "ma50": 761.14,
+   "ma200": 690.52,
+   "ma200_slope_6m": 0.0342,
+   "days_below_ma200": 0,
+   "perf_52w": 0.0679,
+   "dist_high_52w": -0.0622,
+   "rsi_weekly": 40.5,
+   "rel_strength_52w": -0.0121,
+   "turnover_median": 37022573,
+   "above_ma50": true,
+   "above_ma200": true,
+   "market_cap": 276869741653,
+   "pe": 13.2,
+   "peg": 1.91,
+   "roe": 0.0637,
+   "roce": 0.1895,
+   "net_margin": 0.1614,
+   "ev_ebitda": 18.6,
+   "net_debt_ebitda": 0.16,
+   "net_debt_net_income": 1.54,
+   "fcf_yield": 0.0888,
+   "current_ratio": 2.13,
+   "rev_growth_3y": 0.0758,
+   "eps_growth_3y": 0.0843,
+   "insider_pct": 0.1579,
+   "dividend_yield": 0.0495,
+   "fair_value_5y": 942.13,
+   "cagr_implied_5y": 0.2188,
+   "half_price_pass": true,
+   "net_income_positive": true,
+   "fcf_positive": true,
+   "fundamentals_available": true,
+   "scores": {
+    "trend": 3,
+    "quality": 3,
+    "growth": 3,
+    "value": 3,
+    "global": 3.0
+   }
+  },
+  {
+   "ticker": "VIRP.PA",
+   "name": "Virbac",
+   "market": "Paris",
+   "sector": "Healthcare",
+   "country": "France",
+   "isin": null,
+   "excluded": false,
+   "reasons": [],
+   "price": 78.25,
+   "ma50": 75.9,
+   "ma200": 68.86,
+   "ma200_slope_6m": 0.0926,
+   "days_below_ma200": 0,
+   "perf_52w": -0.2248,
+   "dist_high_52w": -0.0618,
+   "rsi_weekly": 67.7,
+   "rel_strength_52w": -0.3048,
+   "turnover_median": 1916439,
+   "above_ma50": true,
+   "above_ma200": true,
+   "market_cap": 40937171393,
+   "pe": 23.1,
+   "peg": 0.55,
+   "roe": 0.3421,
+   "roce": 0.1212,
+   "net_margin": 0.068,
+   "ev_ebitda": 5.9,
+   "net_debt_ebitda": 1.7,
+   "net_debt_net_income": 1.23,
+   "fcf_yield": 0.0604,
+   "current_ratio": 1.95,
+   "rev_growth_3y": 0.1922,
+   "eps_growth_3y": 0.2855,
+   "insider_pct": 0.2738,
+   "dividend_yield": 0.01,
+   "fair_value_5y": 145.95,
+   "cagr_implied_5y": 0.0611,
+   "half_price_pass": false,
+   "net_income_positive": true,
+   "fcf_positive": true,
+   "fundamentals_available": true,
+   "scores": {
+    "trend": 1,
+    "quality": 5,
+    "growth": 2,
+    "value": 3,
+    "global": 2.5
+   }
+  },
+  {
+   "ticker": "CAP.PA",
+   "name": "Capgemini",
+   "market": "Paris",
+   "sector": "Technology",
+   "country": "France",
+   "isin": null,
+   "excluded": true,
+   "reasons": [
+    "Below MA200 for 214 sessions"
+   ],
+   "price": 786.22,
+   "ma50": 762.63,
+   "ma200": 691.87,
+   "ma200_slope_6m": 0.0106,
+   "days_below_ma200": 214,
+   "perf_52w": -0.1708,
+   "dist_high_52w": -0.078,
+   "rsi_weekly": 43.1,
+   "rel_strength_52w": -0.2508,
+   "turnover_median": 28025213,
+   "above_ma50": false,
+   "above_ma200": false,
+   "market_cap": 293029225526,
+   "pe": 37.9,
+   "peg": 1.02,
+   "roe": 0.3042,
+   "roce": 0.0547,
+   "net_margin": 0.1663,
+   "ev_ebitda": 5.7,
+   "net_debt_ebitda": 0.7,
+   "net_debt_net_income": 1.11,
+   "fcf_yield": 0.032,
+   "current_ratio": 2.37,
+   "rev_growth_3y": 0.0155,
+   "eps_growth_3y": 0.2536,
+   "insider_pct": 0.1716,
+   "dividend_yield": 0.0018,
+   "fair_value_5y": 1530.28,
+   "cagr_implied_5y": 0.1779,
+   "half_price_pass": true,
+   "net_income_positive": true,
+   "fcf_positive": true,
+   "fundamentals_available": true,
+   "scores": {
+    "trend": 1,
+    "quality": 5,
+    "growth": 2,
+    "value": 2,
+    "global": 2.35
+   }
+  },
+  {
+   "ticker": "ALTUR.PA",
+   "name": "Small Cap Example",
+   "market": "Paris",
+   "sector": "Industrials",
+   "country": "France",
+   "isin": null,
+   "excluded": false,
+   "reasons": [],
+   "price": 500.38,
+   "ma50": 485.37,
+   "ma200": 440.33,
+   "ma200_slope_6m": -0.0327,
+   "days_below_ma200": 0,
+   "perf_52w": -0.1907,
+   "dist_high_52w": -0.0823,
+   "rsi_weekly": 48.7,
+   "rel_strength_52w": -0.2707,
+   "turnover_median": 4384513,
+   "above_ma50": true,
+   "above_ma200": true,
+   "market_cap": 84732172635,
+   "pe": 25.5,
+   "peg": 2.45,
+   "roe": 0.0913,
+   "roce": 0.0915,
+   "net_margin": 0.1516,
+   "ev_ebitda": 11.6,
+   "net_debt_ebitda": 2.07,
+   "net_debt_net_income": 1.61,
+   "fcf_yield": 0.0857,
+   "current_ratio": 1.84,
+   "rev_growth_3y": 0.2271,
+   "eps_growth_3y": 0.1162,
+   "insider_pct": 0.143,
+   "dividend_yield": 0.0156,
+   "fair_value_5y": 623.95,
+   "cagr_implied_5y": 0.1576,
+   "half_price_pass": false,
+   "net_income_positive": true,
+   "fcf_positive": true,
+   "fundamentals_available": true,
+   "scores": {
+    "trend": 1,
+    "quality": 3,
+    "growth": 3,
+    "value": 1,
+    "global": 1.9
+   }
+  },
+  {
+   "ticker": "JMT.LS",
+   "name": "Jeronimo Martins",
+   "market": "Lisbon",
+   "sector": "Consumer Staples",
+   "country": "Portugal",
+   "isin": null,
+   "excluded": false,
+   "reasons": [],
+   "price": 72.47,
+   "ma50": 70.3,
+   "ma200": 63.77,
+   "ma200_slope_6m": 0.0633,
+   "days_below_ma200": 0,
+   "perf_52w": -0.0011,
+   "dist_high_52w": -0.0736,
+   "rsi_weekly": 41.6,
+   "rel_strength_52w": -0.0811,
+   "turnover_median": 84275201,
+   "above_ma50": true,
+   "above_ma200": true,
+   "market_cap": 221197358936,
+   "pe": 13.0,
+   "peg": 2.43,
+   "roe": 0.1761,
+   "roce": 0.0755,
+   "net_margin": 0.1578,
+   "ev_ebitda": 6.6,
+   "net_debt_ebitda": 2.5,
+   "net_debt_net_income": 3.72,
+   "fcf_yield": 0.0124,
+   "current_ratio": 1.7,
+   "rev_growth_3y": -0.0456,
+   "eps_growth_3y": 0.1818,
+   "insider_pct": 0.1517,
+   "dividend_yield": 0.0006,
+   "fair_value_5y": 94.29,
+   "cagr_implied_5y": 0.0408,
+   "half_price_pass": false,
+   "net_income_positive": true,
+   "fcf_positive": true,
+   "fundamentals_available": true,
+   "scores": {
+    "trend": 1,
+    "quality": 3,
+    "growth": 2,
+    "value": 1,
+    "global": 1.7
+   }
+  }
+ ]
+};</script>
+<script>
+/* ============================================================
+   GLOSSARY — plain-English definition for every metric shown.
+   `rule` is the rule of thumb printed in green under the text.
+   ============================================================ */
+const G={
+ price:{t:"Price",d:"Latest closing price."},
+ market:{t:"Market",d:"Which Euronext exchange the share is listed on."},
+ sector:{t:"Sector",d:"Business sector, used to compare like with like and to exempt some sectors from the debt filter."},
+ perf_52w:{t:"52-week performance",d:"How much the share price moved over the last year. The raw trend, before comparing to anything else."},
+ rel_strength_52w:{t:"Relative strength",d:"The share's 52-week performance minus the benchmark index's. This is the honest version of performance: it tells you whether the company outran the market or just floated up with it.",rule:"Positive = beating the index"},
+ dist_high_52w:{t:"Distance from 52-week high",d:"How far below its 12-month peak the share sits today. Close to 0% means it is trading at its highs, which in trend-following is a strength, not a warning."},
+ roe:{t:"ROE — return on equity",d:"Profit generated for every euro of shareholder money. It answers: how well does this company compound the capital its owners left in it?",rule:"Above 15% = strong"},
+ roce:{t:"ROCE — return on capital employed",d:"Profit for every euro of ALL capital used, equity plus debt. Harder to flatter than ROE, because loading up on debt doesn't improve it. The cleanest read on whether management uses capital well.",rule:"Above 15% = quality"},
+ ev_ebitda:{t:"EV/EBITDA",d:"How many years of operating profit it would take to pay for the entire company, debt included. Below 10 you're usually in boring, unglamorous businesses — which is often exactly where the value hides.",rule:"Below 10 = inexpensive"},
+ fcf_yield:{t:"Free cash flow yield",d:"The cash the business actually generates, divided by its market value. What you'd collect each year if the company handed everything to shareholders. Cash is harder to massage than accounting profit."},
+ cagr_implied_5y:{t:"Implied 5-year return",d:"The annual return you'd get if the 5-year projection plays out, buying at today's price. This is the output of the Half-Price 5Y gate.",rule:"Target 15%/yr"},
+ pe:{t:"P/E — price to earnings",d:"Share price divided by earnings per share: how many years of current profit you pay for one share. Useful, but says nothing about growth on its own — that's what PEG is for."},
+ peg:{t:"PEG — price/earnings to growth",d:"P/E divided by the earnings growth rate. It answers the question P/E can't: is the price high because the company is genuinely growing, or just expensive? At or below 1, the price is not stretched relative to the growth you're buying.",rule:"1 or below = fairly priced for its growth"},
+ eps_growth_3y:{t:"EPS growth",d:"Earnings PER SHARE growth per year. The 'per share' matters: a company can grow total profit while issuing so many new shares that your slice shrinks. This metric catches that.",rule:"Above 5% = profits really growing"},
+ rev_growth_3y:{t:"Revenue growth",d:"Annual sales growth over three years. The top line — it shows demand, but says nothing about whether that growth is profitable."},
+ net_margin:{t:"Net margin",d:"What share of every euro of sales survives to the bottom line as profit. High and stable margins usually signal pricing power."},
+ ma200:{t:"200-day moving average",d:"The average closing price over the last 200 trading days. When the price sits ABOVE it, the stock is in a long-term uptrend. This is the hard filter: names below it for more than six months are excluded outright, however good their fundamentals look.",rule:"Price above MA200 = uptrend"},
+ ma50:{t:"50-day moving average",d:"Same idea over 50 days: the medium-term trend. Price above both MA50 and MA200 is the strongest configuration."},
+ ma200_slope_6m:{t:"MA200 slope",d:"Whether the 200-day average itself has risen over the last six months. The price can poke above a still-falling average — a rising average confirms the trend is real."},
+ rsi_weekly:{t:"Weekly RSI",d:"Momentum gauge from 0 to 100. Above 70 the stock is overbought and may have run too far too fast; below 30 it is oversold. Context, not a signal on its own."},
+ net_debt_ebitda:{t:"Net debt / EBITDA",d:"How many years of operating profit it would take to clear the debt. The single most useful solvency number.",rule:"Below 2x = comfortable"},
+ net_debt_net_income:{t:"Net debt / net income",d:"Same question measured against bottom-line profit, which is stricter than EBITDA because it counts interest, tax and depreciation."},
+ current_ratio:{t:"Current ratio",d:"Short-term assets divided by short-term debts. Below 1 means the company may struggle to cover the coming year's bills without new financing."},
+ insider_pct:{t:"Insider ownership",d:"Share of the company held by its own executives and directors. When management owns a meaningful stake, their money moves with yours.",rule:"Above 3% = skin in the game"},
+ dividend_yield:{t:"Dividend yield",d:"Annual dividend as a percentage of the share price."},
+ market_cap:{t:"Market capitalisation",d:"Total value of all shares. Small caps are where inefficiencies live, but also where data is thinnest and trading costs highest."},
+ turnover_median:{t:"Median daily turnover",d:"Euros traded per day, typical value. Low turnover means wide spreads and difficulty exiting a position — an execution-cost issue, not a judgement on the company.",rule:"Below €100k/day = hard to trade"},
+ half_price:{t:"Half-Price 5Y gate",d:"Projects earnings per share five years out using capped growth and a capped exit P/E, then works backwards to the return implied by today's price. Deliberately conservative so a temporary growth spurt can't make a stock look artificially cheap.",rule:"Passes at 15%/yr or better"},
+ score:{t:"Overall score",d:"Weighted blend of the four blocks, each scored 1 to 5: trend 40%, quality 25%, growth 20%, value 15%. Trend dominates by design — a great business in a downtrend still gets marked down."},
+ bar:{t:"Score breakdown",d:"Four bars whose WIDTHS are the weights (trend 40%, quality 25%, growth 20%, value 15%) and whose FILL HEIGHT is that block's 1-to-5 score. A wide bar barely filled is a weak trend, which matters most."},
+ funnel_universe:{t:"Stocks panned",d:"Every listed company screened this run: all PEA-eligible shares on Euronext Paris, Amsterdam, Brussels and Lisbon. This is the raw sand going into the pan."},
+ funnel_data:{t:"With usable data",d:"Names for which enough price history and financials came back to be scored. The rest are listed as errors in data.json."},
+ funnel_trend:{t:"Passed the trend filter",d:"Names still in a long-term uptrend and liquid enough to trade. Most of the universe drops out here — that is the 200-day moving average doing its job."},
+ funnel_filters:{t:"Survived the hard filters",d:"Names that also cleared the fundamental knockouts: positive profit, positive free cash flow, tolerable debt, no revenue collapse."},
+ funnel_shortlist:{t:"Nuggets",d:"The high scorers worth opening a report on. This is where the screener stops and your own research starts."},
+};
+
+/* ---------- tooltip engine (hover on desktop, tap on touch) ---------- */
+const tipEl=document.getElementById("tip");
+function showTip(el){
+  const k=el.dataset.g, g=G[k]; if(!g) return;
+  tipEl.innerHTML=`<b>${g.t}</b>${g.d}${g.rule?`<em>▸ ${g.rule}</em>`:""}`;
+  tipEl.classList.add("show");
+  const r=el.getBoundingClientRect(), t=tipEl.getBoundingClientRect();
+  let x=Math.min(r.left, innerWidth-t.width-12), y=r.bottom+8;
+  if(y+t.height>innerHeight-8) y=r.top-t.height-8;
+  tipEl.style.left=Math.max(8,x)+"px"; tipEl.style.top=Math.max(8,y)+"px";
+}
+const hideTip=()=>tipEl.classList.remove("show");
+document.addEventListener("mouseover",e=>{const el=e.target.closest("[data-g]"); el?showTip(el):hideTip()});
+document.addEventListener("click",e=>{const el=e.target.closest("[data-g]"); if(el){e.stopPropagation();showTip(el)}else hideTip()});
+document.addEventListener("scroll",hideTip,true);
+
+/* ---------- formatting ---------- */
+const pct=(v,d=1)=>v==null?"—":(v*100).toFixed(d)+"%";
+const num=(v,d=1)=>v==null?"—":Number(v).toFixed(d);
+const eur=v=>v==null?"—":"€"+Number(v).toLocaleString("en-US",{maximumFractionDigits:2});
+const sign=v=>v==null?"":(v>=0?"up":"down");
+const cap=v=>v==null?"—":v>=1e9?"€"+(v/1e9).toFixed(1)+"B":v>=1e6?"€"+(v/1e6).toFixed(0)+"M":"€"+(v/1e3).toFixed(0)+"k";
+const g=k=>`data-g="${k}"`;
+
+let DATA=null, CFG=null, rows=[], sortKey="score", sortAsc=false;
+let TARGET_CAGR=0.15, SHORTLIST_SCORE=3.8, THR={};
+const st={out:true, half:false, top:false, market:"", sector:"", q:""};
+
+const COLS=[
+ {k:"ticker",  label:"Ticker",       g:null},
+ {k:"market",  label:"Market",       g:"market"},
+ {k:"sector",  label:"Sector",       g:"sector"},
+ {k:"price",   label:"Price",        g:"price"},
+ {k:"perf_52w",label:"52w perf",     g:"perf_52w",         c:"c-trend"},
+ {k:"rel_strength_52w",label:"Rel. strength",g:"rel_strength_52w",c:"c-trend"},
+ {k:"dist_high_52w",label:"vs 52w high",g:"dist_high_52w", c:"c-trend"},
+ {k:"roe",     label:"ROE",          g:"roe",              c:"c-quality"},
+ {k:"roce",    label:"ROCE",         g:"roce",             c:"c-quality"},
+ {k:"eps_growth_3y",label:"EPS growth",g:"eps_growth_3y",  c:"c-growth"},
+ {k:"ev_ebitda",label:"EV/EBITDA",   g:"ev_ebitda",        c:"c-value"},
+ {k:"peg",     label:"PEG",          g:"peg",              c:"c-value"},
+ {k:"fcf_yield",label:"FCF yield",   g:"fcf_yield",        c:"c-value"},
+ {k:"cagr_implied_5y",label:"5y CAGR",g:"cagr_implied_5y", c:"c-value"},
+ {k:"score",   label:"Score",        g:"score"},
+];
+
+function demoFallback(){
+  if(window.DEMO_DATA){
+    init(window.DEMO_DATA);
+    document.getElementById("stamp").insertAdjacentHTML("beforeend",
+      ' — <b style="color:var(--warn)">⚠ demo data, made-up numbers</b>');
+    return;
+  }
+  document.getElementById("stamp").textContent="";
+  document.getElementById("empty").innerHTML=
+    `<div class="empty"><p><b>No data to display.</b></p>
+     <p>Run <code>python screener.py</code> to generate <code>data.json</code> next to this page,
+     or wait for the next scheduled GitHub Action run.</p></div>`;
+  document.querySelector(".tablewrap").style.display="none";
+}
+
+if(location.protocol==="file:"){
+  demoFallback();           // fetch() is blocked on file:// by the browser (CORS)
+} else {
+  fetch("data.json?"+Date.now()).then(r=>{if(!r.ok)throw 0;return r.json()}).then(init)
+   .catch(()=>fetch("data.demo.json").then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{
+     init(d);
+     document.getElementById("stamp").insertAdjacentHTML("beforeend",
+       ' — <b style="color:var(--warn)">⚠ demo data, made-up numbers</b>');
+   }))
+   .catch(demoFallback);
+}
+
+function init(d){
+  DATA=d; rows=d.rows; CFG=d.config||{};
+  TARGET_CAGR=CFG.half_price_5y_valuation?.target_cagr ?? 0.15;
+  THR=CFG.display_thresholds||{};
+  SHORTLIST_SCORE=THR.shortlist_score ?? 3.8;
+  document.getElementById("fTop").textContent="⭐ Score ≥ "+SHORTLIST_SCORE.toFixed(1);
+
+  document.getElementById("head").innerHTML=
+    COLS.map(c=>`<th data-k="${c.k}" class="${c.c||""}" ${c.g?g(c.g):""}>${c.label}</th>`).join("")
+    + `<th ${g("bar")}>T · Q · G · V</th>`;
+
+  settingsPanel();
+  const f=d.funnel;
+  document.getElementById("funnel").innerHTML=[
+    ["🪣","Listed stocks panned",f.universe,"funnel_universe"],
+    ["📄","With usable data",f.data_ok,"funnel_data"],
+    ["📈","Passed trend filter",f.trend_ok??f.data_ok,"funnel_trend"],
+    ["🧪","Survived hard filters",f.after_filters,"funnel_filters"],
+    ["💎","Nuggets",f.shortlist,"funnel_shortlist"],
+  ].map(([emo,l,v,gk],i)=>`<div class="stage s${i}" ${g(gk)} style="flex:${Math.max(v,10)}">
+      <b>${v}</b><span>${emo} ${l}</span></div>`).join("");
+
+  document.getElementById("stamp").textContent=
+    "Data as of "+new Date(d.generated_at).toLocaleString("en-US")+" · benchmark "+
+    (d.config?.execution?.benchmark??"—")+
+    (d.errors.length?` · ${d.errors.length} name(s) without data`:"");
+  fill("market","market"); fill("sector","sector");
+  render();
+}
+
+function settingsPanel(){
+  const P=CFG.score_weights||{}, F=CFG.elimination_filters||{}, Un=CFG.universe||{};
+  const L=[["Trend weight",pct(P.trend,0)],["Quality weight",pct(P.quality,0)],
+   ["Growth weight",pct(P.growth,0)],["Value weight",pct(P.value,0)],
+   ["Half-Price 5Y target",pct(TARGET_CAGR,0)],["Shortlist threshold",SHORTLIST_SCORE],
+   ["Max days below MA200",F.max_days_below_ma200],
+   ["Max net debt/EBITDA",F.max_net_debt_to_ebitda!=null?F.max_net_debt_to_ebitda+"x":null],
+   ["Min current ratio",F.min_current_ratio],
+   ["Min market cap",Un.min_market_cap_eur!=null?cap(Un.min_market_cap_eur):null],
+   ["Min daily liquidity",Un.min_daily_turnover_eur!=null?cap(Un.min_daily_turnover_eur):null],
+   ["Elimination filters",CFG.elimination_filters?(F.enabled?"on":"off"):null]];
+  const present=L.filter(([,v])=>v!=null&&v!=="—");
+  document.getElementById("settingsBody").innerHTML = present.length
+    ? present.map(([k,v])=>`<div><span>${k}</span><b>${v}</b></div>`).join("")
+    : `<div style="grid-column:1/-1;color:var(--muted)">This dataset doesn't include configuration details (older format).</div>`;
+}
+function fill(id,key){
+  const el=document.getElementById(id);
+  [...new Set(rows.map(r=>r[key]))].filter(Boolean).sort().forEach(v=>el.add(new Option(v,v)));
+}
+const val=(r,k)=>k==="score"?r.scores.global:r[k];
+
+function visible(){
+  return rows.filter(r=>{
+    if(st.out&&r.excluded) return false;
+    if(st.half&&!r.half_price_pass) return false;
+    if(st.top&&r.scores.global<SHORTLIST_SCORE) return false;
+    if(st.market&&r.market!==st.market) return false;
+    if(st.sector&&r.sector!==st.sector) return false;
+    if(st.q&&!((r.name||"")+r.ticker).toLowerCase().includes(st.q)) return false;
+    return true;
+  }).sort((a,b)=>{
+    const x=val(a,sortKey),y=val(b,sortKey);
+    if(x==null)return 1; if(y==null)return -1;
+    return (typeof x==="string"?x.localeCompare(y):x-y)*(sortAsc?1:-1);
+  });
+}
+
+const scoreClass=s=>s>=4?"hi":s>=3?"mid":"lo";
+/* green when the metric clears its rule of thumb, red when it doesn't */
+const mark=(ok,txt)=>ok==null?`<span>${txt}</span>`:`<span class="${ok?"up":"down"}">${txt}</span>`;
+
+function render(){
+  const v=visible();
+  document.getElementById("count").textContent=`${v.length} of ${rows.length} names shown`;
+  document.getElementById("body").innerHTML=v.map(r=>`
+   <tr data-i="${rows.indexOf(r)}" class="${r.excluded?"out":""}">
+    <td><span class="tk">${r.ticker}</span><span class="nm">${r.name??""}</span></td>
+    <td class="mk">${r.market??""}</td><td class="mk">${r.sector??""}</td>
+    <td class="num">${eur(r.price)}</td>
+    <td class="num ${sign(r.perf_52w)}">${pct(r.perf_52w,0)}</td>
+    <td class="num ${sign(r.rel_strength_52w)}">${pct(r.rel_strength_52w,0)}</td>
+    <td class="num">${pct(r.dist_high_52w,0)}</td>
+    <td class="num">${mark(r.roe==null?null:r.roe>=(THR.min_roe??.15),pct(r.roe,0))}</td>
+    <td class="num">${mark(r.roce==null?null:r.roce>=(THR.target_roce??.15),pct(r.roce,0))}</td>
+    <td class="num">${mark(r.eps_growth_3y==null?null:r.eps_growth_3y>=(THR.min_eps_growth??.05),pct(r.eps_growth_3y,0))}</td>
+    <td class="num">${mark(r.ev_ebitda==null?null:r.ev_ebitda<=(THR.max_ev_ebitda??10),num(r.ev_ebitda))}</td>
+    <td class="num">${mark(r.peg==null?null:r.peg<=(THR.max_peg??1),num(r.peg,2))}</td>
+    <td class="num">${pct(r.fcf_yield,1)}</td>
+    <td class="num ${r.cagr_implied_5y>=TARGET_CAGR?"up":""}">${pct(r.cagr_implied_5y,0)}</td>
+    <td><span class="score ${scoreClass(r.scores.global)}">${r.scores.global.toFixed(2)}</span></td>
+    <td>${bar(r.scores)}</td>
+   </tr>`).join("");
+  document.querySelectorAll("tbody tr").forEach(tr=>tr.onclick=()=>openDrawer(rows[+tr.dataset.i]));
+}
+const bar=s=>`<div class="bar" data-g="bar">
+  ${[["t",s.trend],["q",s.quality],["g",s.growth],["v",s.value]]
+    .map(([c,n])=>`<span class="seg ${c}"><i style="height:${n*20}%"></i></span>`).join("")}</div>`;
+
+function openDrawer(r){
+  const chip=(ok,txt,gk)=>`<span class="pill ${ok?"ok":"no"}" ${gk?g(gk):""}>${ok?"✓":"✗"} ${txt}</span>`;
+  const row=(gk,label,value)=>`<dt><span class="ttip" ${g(gk)}>${label}</span></dt><dd>${value}</dd>`;
+  document.getElementById("drawer").innerHTML=`
+   <button class="close" onclick="document.getElementById('drawer').classList.remove('open')">Close</button>
+   <div class="eyebrow">${r.market} · ${r.sector} · ${r.country??""}</div>
+   <h2>${r.name??r.ticker}</h2>
+   <div class="num" style="color:var(--muted)">${r.ticker} · <span class="ttip" ${g("market_cap")}>${cap(r.market_cap)}</span></div>
+   ${r.excluded?`<div class="reason"><b>Excluded:</b> ${r.reasons.join(" · ")}</div>`:""}
+
+   <div class="pillhead">Priority checks — hover any pill for what it means</div>
+   <div class="pills">
+     ${chip((r.roe??0)>=(THR.min_roe??.15),"ROE > 15%","roe")}
+     ${chip((r.roce??0)>=(THR.target_roce??.15),"ROCE > 15%","roce")}
+     ${chip(r.peg!=null&&r.peg<=(THR.max_peg??1),"PEG ≤ "+(THR.max_peg??1),"peg")}
+     ${chip(r.above_ma200,"Price > MA200","ma200")}
+     ${chip(r.ev_ebitda!=null&&r.ev_ebitda<=(THR.max_ev_ebitda??10),"EV/EBITDA < "+(THR.max_ev_ebitda??10),"ev_ebitda")}
+     ${chip((r.eps_growth_3y??0)>=(THR.min_eps_growth??.05),"EPS > "+((THR.min_eps_growth??.05)*100).toFixed(0)+"%","eps_growth_3y")}
+   </div>
+   <div class="pillhead">Secondary checks</div>
+   <div class="pills">
+     ${chip(r.above_ma50,"Price > MA50","ma50")}
+     ${chip(r.ma200_slope_6m>0,"MA200 rising","ma200_slope_6m")}
+     ${chip(r.half_price_pass,"Half-Price 5Y","half_price")}
+     ${chip((r.insider_pct??0)>=(THR.min_insider_ownership??.03),"Insiders ≥ 3%","insider_pct")}
+     ${chip(r.net_debt_ebitda!=null&&r.net_debt_ebitda<=(THR.max_debt_to_ebitda??2),"Debt/EBITDA < 2x","net_debt_ebitda")}
+   </div>
+
+   <div class="grp t"><span>📈 Trend</span><span>40% weight · ${r.scores.trend}/5</span></div>
+   <dl class="kv">
+     ${row("ma200","Price / MA50 / MA200",`${num(r.price,2)} / ${num(r.ma50,2)} / ${num(r.ma200,2)}`)}
+     ${row("ma200_slope_6m","MA200 slope (6 months)",pct(r.ma200_slope_6m))}
+     ${row("perf_52w","52-week performance",pct(r.perf_52w))}
+     ${row("rel_strength_52w","Relative strength vs benchmark",pct(r.rel_strength_52w))}
+     ${row("dist_high_52w","Distance from 52w high",pct(r.dist_high_52w))}
+     ${row("rsi_weekly","Weekly RSI",num(r.rsi_weekly))}
+     ${row("turnover_median","Median daily turnover",r.turnover_median==null?"—":cap(r.turnover_median))}
+   </dl>
+
+   <div class="grp q"><span>🏛 Quality</span><span>25% weight · ${r.scores.quality}/5</span></div>
+   <dl class="kv">
+     ${row("roe","ROE",pct(r.roe))}
+     ${row("roce","ROCE",pct(r.roce))}
+     ${row("net_margin","Net margin",pct(r.net_margin))}
+     ${row("net_debt_ebitda","Net debt / EBITDA",num(r.net_debt_ebitda,2)+"x")}
+     ${row("net_debt_net_income","Net debt / net income",num(r.net_debt_net_income,2)+"x")}
+     ${row("current_ratio","Current ratio",num(r.current_ratio,2))}
+     ${row("insider_pct","Insider ownership",pct(r.insider_pct))}
+   </dl>
+
+   <div class="grp g"><span>🌱 Growth</span><span>20% weight · ${r.scores.growth}/5</span></div>
+   <dl class="kv">
+     ${row("rev_growth_3y","Revenue growth (3y)",pct(r.rev_growth_3y))}
+     ${row("eps_growth_3y","EPS growth (3y)",pct(r.eps_growth_3y))}
+   </dl>
+
+   <div class="grp v"><span>🏷 Value</span><span>15% weight · ${r.scores.value}/5</span></div>
+   <dl class="kv">
+     ${row("pe","P/E",num(r.pe))}
+     ${row("peg","PEG",num(r.peg,2))}
+     ${row("ev_ebitda","EV/EBITDA",num(r.ev_ebitda))}
+     ${row("fcf_yield","FCF yield",pct(r.fcf_yield))}
+     ${row("dividend_yield","Dividend yield",pct(r.dividend_yield))}
+     ${row("half_price","Projected 5y value",eur(r.fair_value_5y))}
+     ${row("cagr_implied_5y","Implied 5y CAGR",pct(r.cagr_implied_5y))}
+   </dl>`;
+  document.getElementById("drawer").classList.add("open");
+}
+
+document.getElementById("head").onclick=e=>{
+  const th=e.target.closest("th[data-k]"); if(!th) return;
+  const k=th.dataset.k;
+  sortAsc = (k===sortKey)? !sortAsc : (k==="ticker"||k==="market"||k==="sector");
+  sortKey=k;
+  document.querySelectorAll("thead th").forEach(x=>x.removeAttribute("aria-sort"));
+  th.setAttribute("aria-sort",sortAsc?"asc":"desc");
+  render();
+};
+const tog=(id,key)=>document.getElementById(id).onclick=e=>{st[key]=!st[key];e.currentTarget.classList.toggle("on",st[key]);render()};
+tog("fOut","out"); tog("fHalf","half"); tog("fTop","top");
+["market","sector"].forEach(k=>document.getElementById(k).onchange=e=>{st[k]=e.target.value;render()});
+document.getElementById("q").oninput=e=>{st.q=e.target.value.toLowerCase();render()};
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){document.getElementById("drawer").classList.remove("open");hideTip()}});
+
+document.getElementById("csv").onclick=()=>{
+  const v=visible(), cols=["ticker","name","market","sector","price","perf_52w","rel_strength_52w","roe","roce","ev_ebitda","peg","fcf_yield","pe","net_debt_ebitda","eps_growth_3y","cagr_implied_5y"];
+  const csv=[[...cols,"score"].join(","),
+    ...v.map(r=>[...cols.map(c=>`"${String(r[c]??"").replace(/"/g,'""')}"`),r.scores.global].join(","))].join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download="panora-"+new Date().toISOString().slice(0,10)+".csv"; a.click();
+};
+document.getElementById("brief").onclick=async e=>{
+  const v=visible().slice(0,12);
+  const txt=["FUNDAMENTAL RESEARCH BRIEF",
+    "Style: trend-following PEA screen on Euronext · data as of "+new Date(DATA.generated_at).toLocaleDateString("en-US"),"",
+    ...v.map(r=>`${r.ticker} — ${r.name} (${r.market}, ${r.sector}) | score ${r.scores.global} `+
+      `| 52w perf ${pct(r.perf_52w,0)} | ROE ${pct(r.roe,0)} | ROCE ${pct(r.roce,0)} `+
+      `| EV/EBITDA ${num(r.ev_ebitda)} | PEG ${num(r.peg,2)} `+
+      `| 5y CAGR ${pct(r.cagr_implied_5y,0)}${r.half_price_pass?" (Half-Price passed)":""}`),
+    "","For each name, check: PEA eligibility (EU/EEA headquarters), organic vs. acquired growth,",
+    "moat durability >= 5 years, debt sustainability, governance and insider ownership."].join("\n");
+  try{await navigator.clipboard.writeText(txt); e.currentTarget.textContent="✓ Brief copied"; }
+  catch{ e.currentTarget.textContent="Clipboard access denied"; }
+  setTimeout(()=>e.currentTarget.textContent="📋 Copy research brief",2200);
+};
+</script>
+</body>
+</html>

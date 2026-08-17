@@ -1,0 +1,179 @@
+#!/usr/bin/env python3
+"""
+Builds universe.csv: every stock listed on Euronext Paris, Amsterdam, Brussels
+and Lisbon, filtered for PEA eligibility (issuer country via ISIN).
+
+Three strategies, tried in order:
+  1. Public table from live.euronext.com (best coverage, includes ISIN)
+  2. yfinance screener by listing venue (fallback)
+  3. universe.seed.csv shipped with the project (last resort, ~110 large caps)
+
+Output columns: Yahoo ticker, name, ISIN, market, country, pea_eligible.
+Sectors get filled in later by screener.py (via Yahoo).
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+import pandas as pd
+import requests
+
+ROOT = Path(__file__).parent
+CONFIG = json.loads((ROOT / "config.json").read_text())
+OUT = ROOT / "universe.csv"
+SEED = ROOT / "universe.seed.csv"
+
+MIC = {
+    "XPAR": ("Paris", ".PA"),
+    "XAMS": ("Amsterdam", ".AS"),
+    "XBRU": ("Brussels", ".BR"),
+    "XLIS": ("Lisbon", ".LS"),
+}
+EEA = set(CONFIG["universe"]["eligible_countries"])
+EXCLUDED = set(CONFIG["universe"]["exclude_tickers"])
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Panora screener, personal use)",
+    "X-Requested-With": "XMLHttpRequest",
+}
+
+
+# --------------------------------------------------------------------------
+# Strategy 1 — public Euronext table
+# --------------------------------------------------------------------------
+
+def from_euronext(mics: list[str]) -> pd.DataFrame:
+    url = "https://live.euronext.com/en/pd/data/stocks"
+    rows, start, step = [], 0, 100
+    session = requests.Session()
+
+    while True:
+        payload = {
+            "draw": len(rows) // step + 1,
+            "start": start,
+            "length": step,
+            "iDisplayStart": start,
+            "iDisplayLength": step,
+            "mics": ",".join(mics),
+        }
+        r = session.post(url, data=payload, headers=HEADERS, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+        batch = data.get("aaData") or data.get("data") or []
+        if not batch:
+            break
+        rows.extend(batch)
+        total = int(data.get("iTotalDisplayRecords") or data.get("recordsTotal") or 0)
+        start += step
+        print(f"  Euronext: {len(rows)}/{total or '?'} rows")
+        if total and start >= total:
+            break
+        if start > 5000:  # safety cap
+            break
+
+    recs = []
+    for row in rows:
+        cells = [str(c) for c in row]
+        joined = " ".join(cells)
+        isin = next((w for w in joined.replace(">", " ").replace("<", " ").split()
+                     if len(w) == 12 and w[:2].isalpha() and w[2:].isalnum()), None)
+        mic = next((m for m in MIC if m in joined), None)
+        symbol = None
+        for c in cells:
+            c2 = c.strip()
+            if 1 <= len(c2) <= 6 and c2.isupper() and c2.isalnum():
+                symbol = c2
+                break
+        name = max((c for c in cells if "<" not in c), key=len, default="")
+        if isin and mic and symbol:
+            recs.append({"symbol": symbol, "name": name.strip(), "isin": isin, "mic": mic})
+
+    if not recs:
+        raise RuntimeError("Euronext responded but row format wasn't recognized")
+    return pd.DataFrame(recs).drop_duplicates("isin")
+
+
+# --------------------------------------------------------------------------
+# Strategy 2 — yfinance screener
+# --------------------------------------------------------------------------
+
+def from_yfinance(mics: list[str]) -> pd.DataFrame:
+    import yfinance as yf
+    from yfinance import EquityQuery
+
+    codes = {"XPAR": "PAR", "XAMS": "AMS", "XBRU": "BRU", "XLIS": "LIS"}
+    recs = []
+    for mic in mics:
+        q = EquityQuery("and", [
+            EquityQuery("eq", ["exchange", codes[mic]]),
+            EquityQuery("gt", ["intradaymarketcap", CONFIG["universe"]["min_market_cap_eur"]]),
+        ])
+        offset = 0
+        while offset < 1000:
+            res = yf.screen(q, offset=offset, size=250, sortField="intradaymarketcap", sortAsc=False)
+            quotes = res.get("quotes", [])
+            if not quotes:
+                break
+            for x in quotes:
+                recs.append({
+                    "symbol": x["symbol"].split(".")[0],
+                    "name": x.get("longName") or x.get("shortName") or "",
+                    "isin": None,
+                    "mic": mic,
+                })
+            offset += len(quotes)
+        print(f"  yfinance {mic}: {len([r for r in recs if r['mic']==mic])} names")
+    if not recs:
+        raise RuntimeError("yfinance screener returned nothing")
+    return pd.DataFrame(recs)
+
+
+# --------------------------------------------------------------------------
+# Assembly
+# --------------------------------------------------------------------------
+
+def finalize(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    df["market"] = df["mic"].map(lambda m: MIC[m][0])
+    df["ticker"] = df.apply(lambda r: f"{r['symbol']}{MIC[r['mic']][1]}", axis=1)
+    df["country"] = df["isin"].map(lambda i: i[:2] if isinstance(i, str) else None)
+    # Without an ISIN, fall back to the listing venue's country as an approximation
+    fallback = {"Paris": "FR", "Amsterdam": "NL", "Brussels": "BE", "Lisbon": "PT"}
+    df["country"] = df["country"].fillna(df["market"].map(fallback))
+    df["pea_eligible"] = df["country"].isin(EEA)
+    df["sector"] = ""
+
+    before = len(df)
+    df = df[df["pea_eligible"] & ~df["ticker"].isin(EXCLUDED)]
+    df = df.drop_duplicates("ticker").sort_values("ticker")
+    print(f"  PEA eligibility: {len(df)} kept out of {before}")
+    return df[["ticker", "name", "isin", "market", "country", "sector"]]
+
+
+def main():
+    mics = CONFIG["universe"]["markets"]
+    for label, fn in (("Euronext", from_euronext), ("yfinance", from_yfinance)):
+        try:
+            print(f"Strategy: {label}")
+            df = finalize(fn(mics))
+            if len(df) >= 150:
+                df.to_csv(OUT, index=False)
+                print(f"universe.csv written: {len(df)} names")
+                return 0
+            print(f"  Too few results ({len(df)}), trying next strategy")
+        except Exception as e:
+            print(f"  Failed: {str(e)[:160]}")
+
+    if SEED.exists():
+        print("Falling back to universe.seed.csv")
+        pd.read_csv(SEED).to_csv(OUT, index=False)
+        return 0
+    print("No strategy worked and no fallback file is present.")
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
