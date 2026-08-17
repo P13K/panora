@@ -15,7 +15,7 @@ reliable approximation, not a legal guarantee.
 
 ```
 build_universe.py ──► universe.csv ──► screener.py ──► data.json ──► index.html
- (Euronext listing,    (~1,000-1,500    (2-stage,         (static)      (public page)
+ (Euronext listing,    (~500-600       (2-stage,         (static)      (public page)
   PEA filter)            names)          config-driven)
 ```
 
@@ -35,7 +35,7 @@ Running locally:
 ```bash
 pip install -r requirements.txt
 python build_universe.py    # writes universe.csv
-python screener.py          # writes data.json (20-40 min on the full universe)
+python screener.py          # writes data.json (10-20 min on the full universe)
 python -m http.server 8000  # http://localhost:8000
 ```
 
@@ -44,23 +44,29 @@ numbers, orange banner) so you can judge the interface before the first run.
 
 ## The universe
 
-`build_universe.py` tries three sources in order, stopping at the first one
-that returns at least 150 names:
+`build_universe.py` uses the yfinance screener, queried separately for each
+of the four listing venues, and falls back to `universe.seed.csv` (the ~110
+large caps shipped with the project) if that returns too little.
 
-1. **Public table from live.euronext.com** — best coverage, includes ISIN.
-   This is the intended source. If Euronext changes its table format, the
-   script automatically falls through to the next one.
-2. **yfinance screener by listing venue** — a reasonable fallback, no ISIN.
-3. **`universe.seed.csv`** — the ~110 large caps shipped with the project.
+In practice this lands around 500-600 PEA-eligible names — smaller than a
+full Euronext instrument count (which runs past 1,000 once every micro-cap
+and illiquid Growth/Access listing is included), but those extra names
+typically lack the price history needed to score them anyway, so the
+practical universe is close to this either way.
+
+Euronext's own live.euronext.com stock table is rendered client-side by
+JavaScript with no documented public JSON endpoint behind it, so it isn't
+used as a data source here. If that ever changes, this is the natural place
+to add a richer strategy back in.
 
 The result is archived as a build artifact on every run, so you can check
-which source was used and how many names came back.
+how many names came back.
 
 **PEA eligibility** is filtered on the issuer's country, inferred from the
-first two letters of the ISIN, checked against
-`universe.eligible_countries` in `config.json`. This is accurate roughly 95%
-of the time — exotic holding structures sometimes slip through. Always
-confirm with your broker before the order.
+first two letters of the ISIN when available, or from the listing venue as
+an approximation otherwise, checked against `universe.eligible_countries` in
+`config.json`. This is a good first pass — exotic holding structures
+sometimes slip through. Always confirm with your broker before the order.
 
 ## Settings — `config.json`
 
