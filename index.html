@@ -45,17 +45,60 @@ h1 .tag{
   border:1px solid var(--trend); border-radius:20px; padding:3px 10px;
 }
 .sub{color:var(--muted); max-width:62ch; margin:0 0 20px}
-.funnel{display:flex; gap:2px; border:1px solid var(--line); background:var(--card); border-radius:var(--r); overflow:hidden}
-.stage{padding:11px 14px; border-right:1px solid var(--line-soft); flex:0 0 auto; min-width:0; cursor:help}
+.funnel{display:flex; flex-wrap:wrap; gap:2px; border:1px solid var(--line); background:var(--card); border-radius:var(--r); overflow:hidden}
+.stage{
+  padding:11px 14px 14px; border-right:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft);
+  flex:1 1 0; min-width:96px; cursor:help; position:relative; overflow:hidden;
+}
 .stage:last-child{border-right:0}
-.stage b{font-family:"IBM Plex Mono",monospace; font-size:20px; font-weight:600; display:block; line-height:1.1}
-.stage span{font-size:11px; color:var(--muted); letter-spacing:.02em; display:block; margin-top:2px}
-/* funnel narrows in colour as well as width: pale at the wide end, saturated at the nugget end */
+.stage b{font-family:"IBM Plex Mono",monospace; font-size:20px; font-weight:600; display:block; line-height:1.1; white-space:nowrap}
+.stage span{font-size:11px; color:var(--muted); letter-spacing:.02em; display:block; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.stage i{position:absolute; left:0; bottom:0; height:3px; background:var(--line-soft); display:block}
+.stage i em{position:absolute; inset:0 auto 0 0; display:block; background:var(--trend)}
+/* funnel narrows in colour as well as fill-bar length: pale at the wide end, saturated at the nugget end */
 .stage.s0{background:#F4F5F8} .stage.s1{background:#EDEFF7}
 .stage.s2{background:var(--trend-soft)} .stage.s3{background:var(--quality-soft)}
 .stage.s4{background:#FDF3D8; box-shadow:inset 3px 0 0 var(--growth)}
 .stage.s4 b{color:#8A5200}
+.stage.s4 i em{background:var(--growth)}
 .stamp{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--muted); margin-top:8px}
+
+/* ---------- tabs ---------- */
+.tabs{display:flex; gap:4px; margin:20px 0 0; border-bottom:1px solid var(--line)}
+.tab{
+  font:inherit; font-weight:500; background:none; border:none; cursor:pointer;
+  padding:9px 4px; margin-right:18px; color:var(--muted); border-bottom:2px solid transparent;
+}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--trend); border-bottom-color:var(--trend)}
+
+/* ---------- methodology page ---------- */
+.meth{max-width:760px; padding:26px 0 10px}
+.meth h2{font-family:"Bricolage Grotesque",sans-serif; font-size:21px; margin:30px 0 4px; letter-spacing:-.01em}
+.meth h2:first-child{margin-top:4px}
+.meth h2 .ico{margin-right:8px}
+.meth p{color:#37414D; margin:8px 0}
+.meth p.lede{color:var(--ink); font-size:15px}
+.meth ul{margin:8px 0; padding-left:20px} .meth li{margin:4px 0; color:#37414D}
+.meth .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:8px; margin:12px 0}
+.meth .card{border:1px solid var(--line); border-radius:var(--r); padding:10px 12px; background:var(--card)}
+.meth .card b{display:block; font-size:13px; margin-bottom:2px}
+.meth .card span{font-size:12px; color:var(--muted)}
+.meth .card.t{border-left:3px solid var(--trend)} .meth .card.q{border-left:3px solid var(--quality)}
+.meth .card.g{border-left:3px solid var(--growth)} .meth .card.v{border-left:3px solid var(--value)}
+.meth table{border-collapse:collapse; width:100%; margin:10px 0; font-size:13px}
+.meth table th{text-align:left; font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--muted); padding:6px 10px; border-bottom:1px solid var(--line)}
+.meth table td{padding:6px 10px; border-bottom:1px solid var(--line-soft)}
+.meth table td.num{font-family:"IBM Plex Mono",monospace}
+.meth .note{
+  background:var(--trend-soft); border:1px solid #C7CCED; color:#1F2A6E;
+  padding:10px 13px; border-radius:var(--r); font-size:13px; margin:14px 0;
+}
+.meth .warn-box{
+  background:#FDF3D8; border:1px solid #E9CE8E; color:#6E4E00;
+  padding:10px 13px; border-radius:var(--r); font-size:13px; margin:14px 0;
+}
 
 /* ---------- filters ---------- */
 .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:22px 0 12px}
@@ -171,6 +214,12 @@ details#settings summary{font-family:"IBM Plex Mono",monospace;font-size:11px;co
     <details id="settings"><summary>Settings applied to this run</summary><div id="settingsBody"></div></details>
   </header>
 
+  <div class="tabs">
+    <button class="tab active" id="tabScreener">📊 Screener</button>
+    <button class="tab" id="tabMethod">📖 Methodology</button>
+  </div>
+
+  <div id="viewScreener">
   <div class="controls">
     <select id="market"><option value="">🌍 All markets</option></select>
     <select id="sector"><option value="">🏭 All sectors</option></select>
@@ -189,6 +238,9 @@ details#settings summary{font-family:"IBM Plex Mono",monospace;font-size:11px;co
     <tbody id="body"></tbody>
   </table></div>
   <div id="empty"></div>
+  </div>
+
+  <div id="viewMethod" class="meth" style="display:none"></div>
 </div>
 
 <aside class="drawer" id="drawer" aria-hidden="true"></aside>
@@ -1066,14 +1118,19 @@ function init(d){
 
   settingsPanel();
   const f=d.funnel;
-  document.getElementById("funnel").innerHTML=[
+  const stages=[
     ["🪣","Listed stocks panned",f.universe,"funnel_universe"],
     ["📄","With usable data",f.data_ok,"funnel_data"],
     ["📈","Passed trend filter",f.trend_ok??f.data_ok,"funnel_trend"],
     ["🧪","Survived hard filters",f.after_filters,"funnel_filters"],
     ["💎","Nuggets",f.shortlist,"funnel_shortlist"],
-  ].map(([emo,l,v,gk],i)=>`<div class="stage s${i}" ${g(gk)} style="flex:${Math.max(v,10)}">
-      <b>${v}</b><span>${emo} ${l}</span></div>`).join("");
+  ];
+  const maxV=Math.max(...stages.map(s=>s[2]),1);
+  document.getElementById("funnel").innerHTML=stages.map(([emo,l,v,gk],i)=>{
+    const w=Math.max(v/maxV*100,3); // floor so even a tiny shortlist still shows a sliver
+    return `<div class="stage s${i}" ${g(gk)}>
+      <b>${v}</b><span>${emo} ${l}</span><i><em style="width:${w}%"></em></i></div>`;
+  }).join("");
 
   document.getElementById("stamp").textContent=
     "Data as of "+new Date(d.generated_at).toLocaleString("en-US")+" · benchmark "+
@@ -1081,6 +1138,7 @@ function init(d){
     (d.errors.length?` · ${d.errors.length} name(s) without data`:"");
   fill("market","market"); fill("sector","sector");
   render();
+  renderMethodology();
 }
 
 function settingsPanel(){
@@ -1098,6 +1156,62 @@ function settingsPanel(){
   document.getElementById("settingsBody").innerHTML = present.length
     ? present.map(([k,v])=>`<div><span>${k}</span><b>${v}</b></div>`).join("")
     : `<div style="grid-column:1/-1;color:var(--muted)">This dataset doesn't include configuration details (older format).</div>`;
+}
+
+function renderMethodology(){
+  const Un=CFG.universe||{}, F=CFG.elimination_filters||{}, W=CFG.score_weights||{},
+        GT=CFG.trend_grid||{}, GQ=CFG.quality_grid||{}, GG=CFG.growth_grid||{}, GV=CFG.value_grid||{},
+        HP=CFG.half_price_5y_valuation||{}, T=CFG.display_thresholds||{};
+  const declineFloor = F.min_revenue_growth_3y!=null ? pct(Math.abs(F.min_revenue_growth_3y),0) : "—";
+
+  document.getElementById("viewMethod").innerHTML = `
+    <p class="lede">How Panora screens, scores, and refreshes — every number below is read live from this run's own configuration, not typed in separately, so it can't drift out of sync with what the screener actually did.</p>
+
+    <h2><span class="ico">🧭</span>Scope</h2>
+    <p>Panora screens common stocks on four Euronext venues — Paris, Amsterdam, Brussels, and Lisbon — and keeps only names eligible for the French PEA tax wrapper. Eligibility is inferred from the issuer's country (via ISIN when available, otherwise the listing venue), checked against the EU/EEA country list in the screener's configuration.</p>
+    <div class="grid">
+      <div class="card"><b>${cap(Un.min_market_cap_eur)}</b><span>Minimum market cap</span></div>
+      <div class="card"><b>${cap(Un.min_daily_turnover_eur)}</b><span>Minimum daily liquidity</span></div>
+      <div class="card"><b>~500-600</b><span>Names with usable price data</span></div>
+      <div class="card"><b>4</b><span>Euronext venues covered</span></div>
+    </div>
+    <p>Below the market-cap floor, a position of a few thousand euros is often too large relative to free float. Below the liquidity floor, spreads eat into returns and exits get difficult — this is a trading-cost filter, not a judgement on the company.</p>
+
+    <h2><span class="ico">🚫</span>What gets excluded outright</h2>
+    <p>Before any score is computed, a name is dropped to the shortlist's "excluded" state — still visible in the table, with its reason shown — if it trips <b>any one</b> of these. A statistically cheap stock can still be excluded if the trend or balance sheet says otherwise; nothing here is a judgement call, it's a fixed rule applied the same way to every name.</p>
+    <table>
+      <thead><tr><th>Rule</th><th>Current threshold</th></tr></thead>
+      <tbody>
+        <tr><td>Price below its 200-day moving average</td><td class="num">${F.max_days_below_ma200 ?? "—"} sessions</td></tr>
+        <tr><td>Net income</td><td class="num">${F.net_income_must_be_positive ? "must be positive" : "not enforced"}</td></tr>
+        <tr><td>Free cash flow</td><td class="num">${F.fcf_must_be_positive ? "must be positive" : "not enforced"}</td></tr>
+        <tr><td>Net debt / EBITDA above</td><td class="num">${F.max_net_debt_to_ebitda ?? "—"}×</td></tr>
+        <tr><td>Current ratio below</td><td class="num">${F.min_current_ratio ?? "—"}</td></tr>
+        <tr><td>Revenue decline over 3 years, worse than</td><td class="num">${declineFloor}</td></tr>
+      </tbody>
+    </table>
+    <p>Exempt from the debt/current-ratio checks: ${(F.sectors_exempt_from_debt_filter||[]).join(", ") || "none"} — sectors where balance-sheet structure differs by nature of the business.</p>
+
+    <h2><span class="ico">🧮</span>How the score is built</h2>
+    <p>Every surviving name gets four sub-scores, each 1 to 5, blended into one overall score:</p>
+    <div class="grid">
+      <div class="card t"><b>Trend — ${pct(W.trend,0)}</b><span>Price above its 50- and 200-day averages, the average itself rising, strong 52-week performance, beating the benchmark.</span></div>
+      <div class="card q"><b>Quality — ${pct(W.quality,0)}</b><span>ROE above ${pct(GQ.excellent_roe,0)} with low debt scores highest; ROE is the anchor metric.</span></div>
+      <div class="card g"><b>Growth — ${pct(W.growth,0)}</b><span>3-year revenue growth above ${pct(GG.great_revenue_growth,0)} scores highest.</span></div>
+      <div class="card v"><b>Value — ${pct(W.value,0)}</b><span>P/E below ${GV.excellent_pe} with FCF yield above ${pct(GV.excellent_fcf_yield,0)} and EV/EBITDA below ${GV.excellent_ev_ebitda} scores highest.</span></div>
+    </div>
+    <p>Trend carries the heaviest weight on purpose: a great business already in a downtrend still scores low here. Overall score = trend×${W.trend??"—"} + quality×${W.quality??"—"} + growth×${W.growth??"—"} + value×${W.value??"—"}, each sub-score on its own 1-5 scale. Names scoring <b>${T.shortlist_score??"—"}</b> or above make the "Nuggets" shortlist.</p>
+
+    <h2><span class="ico">💰</span>The Half-Price 5Y gate</h2>
+    <p>A separate, more conservative check, shown per name in its detail panel. Earnings per share are projected five years out using capped growth (max ${pct(HP.eps_growth_cap,0)}/yr) and a capped exit P/E (max ${HP.exit_pe_cap ?? "—"}×), then the annual return implied by buying at today's price is computed. It passes at <b>${pct(HP.target_cagr,0)}/yr</b> or better. The caps exist so a temporary growth spurt can't make a stock look artificially cheap.</p>
+
+    <h2><span class="ico">📡</span>Data &amp; refresh</h2>
+    <p>Prices and fundamentals come from Yahoo Finance via the <code>yfinance</code> library — free, but an unofficial API: fundamentals can lag a quarter and are sometimes missing for micro caps, in which case they're flagged as unavailable rather than guessed at. To keep runs fast across hundreds of names, trend data is pulled for the whole universe first; fundamentals are only downloaded for names that already pass the trend filter.</p>
+    <div class="note">The screener re-runs automatically <b>Tuesday through Saturday</b>, shortly after Euronext's prior-day close. The exact timestamp behind the data on this page is always shown under "Data as of" above the table.</div>
+
+    <h2><span class="ico">⚠️</span>What this is not</h2>
+    <div class="warn-box">Panora ranks, it doesn't decide. It's a first-pass filter meant to point research in the right direction — not investment advice, not a verified PEA-eligibility check, and not a substitute for reading the actual annual report. Always confirm eligibility with your broker before placing an order.</div>
+  `;
 }
 function fill(id,key){
   const el=document.getElementById(id);
@@ -1235,6 +1349,17 @@ tog("fOut","out"); tog("fHalf","half"); tog("fTop","top");
 ["market","sector"].forEach(k=>document.getElementById(k).onchange=e=>{st[k]=e.target.value;render()});
 document.getElementById("q").oninput=e=>{st.q=e.target.value.toLowerCase();render()};
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){document.getElementById("drawer").classList.remove("open");hideTip()}});
+
+function switchTab(name){
+  const isScreener = name==="screener";
+  document.getElementById("tabScreener").classList.toggle("active", isScreener);
+  document.getElementById("tabMethod").classList.toggle("active", !isScreener);
+  document.getElementById("viewScreener").style.display = isScreener ? "" : "none";
+  document.getElementById("viewMethod").style.display = isScreener ? "none" : "";
+}
+document.getElementById("tabScreener").onclick=()=>switchTab("screener");
+document.getElementById("tabMethod").onclick=()=>switchTab("methodology");
+
 
 document.getElementById("csv").onclick=()=>{
   const v=visible(), cols=["ticker","name","market","sector","price","perf_52w","rel_strength_52w","roe","roce","ev_ebitda","peg","fcf_yield","pe","net_debt_ebitda","eps_growth_3y","cagr_implied_5y"];
